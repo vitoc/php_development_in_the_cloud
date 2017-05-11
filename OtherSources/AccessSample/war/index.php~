@@ -1,0 +1,13 @@
+<?php
+
+echo "App Test";
+
+$user_service_factory_class = java_class("com.google.appengine.api.users.UserServiceFactory");
+
+print_r($user_service_factory_class);
+
+//$user_service = $user_service_factory_class->getUserService();
+//$user = $user_service->getCurrentUser();
+//$request_uri = $_SERVER[‘REQUEST_URI’];
+
+

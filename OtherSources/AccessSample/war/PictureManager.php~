@@ -1,0 +1,161 @@
+<?php
+require_once 'S3.php';
+// Place actual values below
+// Amazon AWS access key
+define('ACCESS_KEY', 'AKIAJB4FBUCLKD77SADQ');
+// Amazon AWS secret key
+define('SECRET_KEY', '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');
+//The name of the bucket
+define('BUCKET', 'pictureme-pictures');
+//The URL in the form of http:// followed by the CloudFront domain name
+define('CF_RESOURCE_URL', 'http://d24s81pssqddd3.cloudfront.net');
+//Restriction on the maximum amount of pictures that can be stored
+define('MAX_PICTURES', 50);
+//Restriction on the maximum size of each picture
+define('MAX_SIZE', 512000);
+
+/**
+ * Manages actions that can be performed with pictures.
+ *
+ * @author Vito Chin
+ */
+class PictureManager
+{
+    /**
+     * The object's singular instance.
+     *
+     * @var object
+     */
+    protected static $_instance = null;
+    /**
+     * The S3 object
+     *
+     * @var object
+     */
+    protected $_storage;
+    /**
+     * Array of meta information of pictures
+     *
+     * @var array
+     */
+    protected $_pictureList;
+    public function __construct()
+    {
+        $this->_storage = new S3(ACCESS_KEY, SECRET_KEY);
+        $this->_refreshList();
+    }
+    /**
+     * Gets an instance of the PictureManager.
+     *
+     * @return PictureManager  singleton instance of picture manager
+     */
+    public static function getInstance()
+    {
+        if (is_null(self::$_instance)) {
+            self::$_instance = new self();
+        }
+        return self::$_instance;
+    }
+    /**
+     * Returns the list of pictures that are stored in the bucket.
+     *
+     * @return array
+     */
+    public function listPictures()
+    {
+        return $this->_pictureList;
+    }
+    /**
+     * Returns the latest picture (name, URL) that had been stored in the bucket.
+     *
+     * @return array
+     */
+    public function getLatestPicture()
+    {
+        $latestPicture = current($this->_pictureList);
+        $picture['url'] = CF_RESOURCE_URL . "/" . $latestPicture['name'];
+        $picture['name'] = current($this->_pictureList);
+        return $picture;
+    }
+    /**
+     * Returns the picture (name, URL) as specified by $pictureName.
+     *
+     * @param string $pictureName512000
+     * @return string
+     */
+    public function getPicture($pictureName)
+    {
+        $picture['url'] = CF_RESOURCE_URL . "/" . $pictureName;
+        $picture['name'] = $pictureName;
+        return $picture;
+    }
+    /**
+     * Deletes the specified picture ($pictureName) from the bucket.
+     * Returns a message indicating if deletion is successful or not.
+     *
+     * @param string $pictureName
+     * @return string
+     */
+    public function deletePicture($pictureName)
+    {
+        if ($this->_storage->deleteObject(BUCKET, $pictureName)) {
+            $this->_refreshList();
+            return "Picture deleted successfully";
+        } else {
+            return "Picture not deleted";
+        }
+    }
+    /**
+     * Stores an uploaded picture in the bucket
+     * Returns a message indicating if storage is successful or not.
+     *
+     * @param string $pictureName
+     * @param string $pictureFile
+     * @param string $pictureType
+     * @param int $pictureSize
+     * @return string
+     */
+    public function putPicture($pictureName, $pictureFile, $pictureType, $pictureSize)
+    {
+        $derivedType = strtolower(strrchr($pictureName,'.'));
+        if (!file_exists($pictureFile) || !is_file($pictureFile)) {
+            return "Picture not found";
+        } else if (($pictureType !== "image/jpeg") && ($pictureType !== "image/png")) {
+            return "Only JPEG and PNG allowed";
+        } else if (($derivedType !== ".jpg" ) && ($derivedType !== ".jpeg" )
+            && ($derivedType !== ".png" )) {
+            return "Only JPEG and PNG allowed. Content-type tampering detected.";
+        } else if ($pictureSize > MAX_SIZE) {
+            return "Maximum file size: 500 kb";
+        } else if (sizeof($this->_pictureList) < 50) {
+            if ($this->_storage->putObjectFile($pictureFile, BUCKET, $pictureName,
+                S3::ACL_PUBLIC_READ)) {
+                $this->_refreshList();
+                return "Picture stored successfully";
+            }
+        } else {
+            return "Picture not stored";
+        }
+    }
+    /**
+     * Obtains the list of pictures that is in the bucket and sort it by time.
+     */
+    private function _refreshList()
+    {
+        $this->_pictureList = $this->_storage->getBucket(BUCKET, null, null, MAX_PICTURES);
+        usort($this->_pictureList, array("PictureManager", "pictureCompare"));
+    }
+    /**
+     * Compares pictures by the time it is stored in the bucket.
+     * @param <type> $a
+     * @param <type> $b
+     * @return int
+     */
+    static function pictureCompare($a, $b)
+    {
+        if ($a['time'] == $b['time']) {
+            return 0;
+        }
+        return ($a['time'] > $b['time']) ? -1 : +1;
+    }
+}

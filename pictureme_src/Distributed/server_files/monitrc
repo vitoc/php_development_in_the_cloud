@@ -1,0 +1,3 @@
+check system localhost
+   if memory usage > 95% then exec "/usr/bin/curl -u [USERNAME]:[PASSWORD] http://[PRIMARY_SERVER]/pictureme/Distributed/worker_server_service.php?spawn=yes"
+   if memory usage < 30% then exec "[PATH_TO_PICTUREME]/pictureme/Distributed/server_files/kamikaze.sh"

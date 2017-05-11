@@ -1,0 +1,13 @@
+Access Sample Requirements
+++++++++++++++++++++++++++
+
+To try this application, you'll need to download and include the following files
+in the specified directory:
+
+1. resin.jar available within the quercus-[version_number].war package available
+   from http://www.caucho.com/download/
+
+2. appengine-api-1.0-sdk-1.3.5.jar within the appengine-java-sdk-[version_number].zip
+   availble from http://code.google.com/appengine/downloads.html
+
+Both these JAR files has to be placed within war/WEB-INF/lib.
